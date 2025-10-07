@@ -37,7 +37,7 @@ export const register = async (req, res) => {
     const user = new User({ name, email, password: hashedPassword, phone, latitude, longitude, verifyOtp: otp, isVerified: false });
     await user.save();
 
-    await transporter.sendMail({
+     transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
       subject: "Verify your email",

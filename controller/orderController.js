@@ -87,7 +87,7 @@ const order = new Order({
     const itemsList = validatedItems.map(i => `${i.quantity} x ${i.productId} @ ₹${i.price}`).join("\n");
 
     // Send email to user
-    await transporter.sendMail({
+    transporter.sendMail({
       from: `"Ecommerce Store" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: "Order Confirmation - Ecommerce Store",
@@ -95,7 +95,7 @@ const order = new Order({
     });
 
     // Send email to admin
-    await transporter.sendMail({
+     transporter.sendMail({
       from: `"Ecommerce Store" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: "New Order Received",

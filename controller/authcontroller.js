@@ -48,7 +48,7 @@ export const register = async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
     });
     
-     transporter.sendMail({
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
       subject: "Verify your email",

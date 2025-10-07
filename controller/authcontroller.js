@@ -37,12 +37,6 @@ export const register = async (req, res) => {
     const user = new User({ name, email, password: hashedPassword, phone, latitude, longitude, verifyOtp: otp, isVerified: false });
     await user.save();
 
-     transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Verify your email",
-      text: `Your OTP for email verification is ${otp}`,
-    });
 
     // JWT cookie
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -52,6 +46,13 @@ export const register = async (req, res) => {
       success: true,
       message: "User registered successfully. Please verify your email.",
       user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
+    });
+    
+     transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Verify your email",
+      text: `Your OTP for email verification is ${otp}`,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

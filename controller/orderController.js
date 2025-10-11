@@ -84,30 +84,25 @@ export const placeOrder = async (req, res) => {
     const itemsList = validatedItems.map(i => `${i.quantity} x ${i.productId} @ ₹${i.price}`).join("\n");
 
     // Send email to user
-    try {
-      await transporter.sendMail({
-        from: `"TechStore" <${process.env.SMTP_USER}>`,
-        to: user.email,
-        subject: "Order Confirmation - TechStore",
-        text: `Hello ${user.firstName} ${user.lastName},\n\nThank you for your order!\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}\n\nWe’ll notify you once it’s shipped.\n\nBest regards,\nEcommerce Team`,
-      });
-    } catch (err) {
-      console.error("Error sending email to user:", err);
-    }
+// Send email to user asynchronously
+transporter.sendMail({
+  from: `"TechStore" <${process.env.SMTP_USER}>`,
+  to: user.email,
+  subject: "Order Confirmation - Ecommerce Store",
+  text: `Hello ${user.firstName} ${user.lastName},\n\nThank you for your order!\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}\n\nWe’ll notify you once it’s shipped.\n\nBest regards,\nEcommerce Team`,
+}).catch(err => console.error("Error sending email to user:", err));
 
-    // Send email to admin
-    try {
-      await transporter.sendMail({
-        from: `"TechStore" <${process.env.SMTP_USER}>`,
-        to: process.env.ADMIN_EMAIL,
-        subject: "New Order Received",
-        text: `New Order Received!\n\nUser: ${user.firstName} ${user.lastName} (${user.email})\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}`,
-      });
-    } catch (err) {
-      console.error("Error sending email to admin:", err);
-    }
+// Send email to admin asynchronously
+transporter.sendMail({
+  from: `"TechStore" <${process.env.SMTP_USER}>`,
+  to: process.env.ADMIN_EMAIL,
+  subject: "New Order Received",
+  text: `New Order Received!\n\nUser: ${user.firstName} ${user.lastName} (${user.email})\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}`,
+}).catch(err => console.error("Error sending email to admin:", err));
 
-    res.status(201).json({ success: true, message: "Order placed successfully", order });
+// Immediately respond to client
+res.status(201).json({ success: true, message: "Order placed successfully", order });
+
 
   } catch (error) {
     console.error("PlaceOrder error:", error);

@@ -4,13 +4,17 @@ import User from "../model/userModel.js";
 import Cart from "../model/Cart.js";
 import nodemailer from "nodemailer";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+dotenv.config();
 
-// Configure your transporter (example using Gmail)
+// Configure transporter (Brevo SMTP)
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
@@ -18,26 +22,20 @@ const transporter = nodemailer.createTransport({
 export const placeOrder = async (req, res) => {
   console.log("Request body:", req.body);
   try {
-    const { userId, items, address, paymentMethod  } = req.body;
+    const { userId, items, address, paymentMethod } = req.body;
 
-     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid user ID format" 
-      });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID format" });
     }
 
-
-
-
-    if (!userId || !address ) {
+    if (!userId || !address) {
       return res.status(400).json({ success: false, message: "User ID and address are required" });
     }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    // Fetch items from DB cart if items not sent
+    // Fetch items from DB cart if not provided
     let cartItems = items;
     if (!items || !items.length) {
       const cart = await Cart.findOne({ user: userId }).populate("items.productId");
@@ -61,22 +59,21 @@ export const placeOrder = async (req, res) => {
       validatedItems.push({
         productId: product._id,
         quantity: it.quantity,
-        price: product.price
+        price: product.price,
       });
 
       totalAmount += product.price * it.quantity;
     }
 
-const order = new Order({
-  user: user._id,
-  items: validatedItems,    // each item already contains productId, quantity, price
-  totalAmount,
-  address,
-  paymentMethod: paymentMethod || "COD",
-  status: "pending",
-  paymentStatus: "pending"
-});
-
+    const order = new Order({
+      user: user._id,
+      items: validatedItems,
+      totalAmount,
+      address,
+      paymentMethod: paymentMethod || "COD",
+      status: "pending",
+      paymentStatus: "pending",
+    });
 
     await order.save();
 
@@ -87,20 +84,28 @@ const order = new Order({
     const itemsList = validatedItems.map(i => `${i.quantity} x ${i.productId} @ ₹${i.price}`).join("\n");
 
     // Send email to user
-    transporter.sendMail({
-      from: `"Ecommerce Store" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: "Order Confirmation - Ecommerce Store",
-      text: `Hello ${user.name},\n\nThank you for your order!\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}\n\nWe’ll notify you once it’s shipped.\n\nBest regards,\nEcommerce Team`,
-    });
+    try {
+      await transporter.sendMail({
+        from: `"TechStore" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: "Order Confirmation - TechStore",
+        text: `Hello ${user.firstName} ${user.lastName},\n\nThank you for your order!\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}\n\nWe’ll notify you once it’s shipped.\n\nBest regards,\nEcommerce Team`,
+      });
+    } catch (err) {
+      console.error("Error sending email to user:", err);
+    }
 
     // Send email to admin
-     transporter.sendMail({
-      from: `"Ecommerce Store" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL,
-      subject: "New Order Received",
-      text: `New Order Received!\n\nUser: ${user.name} (${user.email})\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}`,
-    });
+    try {
+      await transporter.sendMail({
+        from: `"TechStore" <${process.env.SMTP_USER}>`,
+        to: process.env.ADMIN_EMAIL,
+        subject: "New Order Received",
+        text: `New Order Received!\n\nUser: ${user.firstName} ${user.lastName} (${user.email})\n\nOrder Details:\n${itemsList}\nTotal: ₹${totalAmount}\n\nDelivery Address:\n${address}`,
+      });
+    } catch (err) {
+      console.error("Error sending email to admin:", err);
+    }
 
     res.status(201).json({ success: true, message: "Order placed successfully", order });
 
@@ -125,7 +130,6 @@ export const getUserOrders = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // Update order status (Admin)
 export const updateOrderStatus = async (req, res) => {

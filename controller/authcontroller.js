@@ -24,6 +24,12 @@ export const register = async (req, res) => {
     if (!name || !email || !password || !phone)
       return res.status(400).json({ success: false, message: "All fields are required" });
 
+
+    if(!latitude || !longitude){
+      return res.status(400).json({ success: false, message: "Location data is required for better service" });
+    }
+    
+    
     if (!validateEmail(email))
       return res.status(400).json({ success: false, message: "Invalid email format" });
 
@@ -48,12 +54,15 @@ export const register = async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email, phone: user.phone },
     });
     
+
+    // Send verification email
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"TechStore" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Verify your email",
-      text: `Your OTP for email verification is ${otp}`,
+      subject: "Email Verification",
+      text: `Your OTP for email verification is: ${otp}`,
     });
+   
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
